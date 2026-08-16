@@ -1,0 +1,69 @@
+name: Create release
+description: 'Create a semantic version tag and GitHub release, optionally marked as a prerelease'
+
+inputs:
+  pr_number:
+    description: "The pull request number. Required when prerelease is 'true', used to construct the RC tag and clean up old RC tags."
+    required: false
+    default: ""
+  branch:
+    description: "The branch name (used for semver calculation)"
+    required: true
+  prerelease:
+    description: "Set to 'true' to create a prerelease tag in the format '<version>-rc-pr-<pr>-<sha>' and mark the GitHub release as a prerelease. When 'false', a plain semver tag is created."
+    required: false
+    default: "false"
+
+outputs:
+  tag:
+    description: "The tag that was created"
+    value: ${{ steps.create-tag.outputs.tag }}
+  release_url:
+    description: "The URL of the created GitHub release"
+    value: ${{ steps.create-release.outputs.release_url }}
+
+runs:
+  using: composite
+  steps:
+    - name: Ensure initial semver tag exists
+      shell: bash
+      run: ${{ github.action_path }}/scripts/ensure_initial_tag.sh
+
+    - name: Clean up existing release candidate tags for this PR
+      if: inputs.prerelease == 'true'
+      id: cleanup-rc-tags
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+      run: ${{ github.action_path }}/scripts/cleanup_rc_tags.sh
+
+    - name: Determine next version from branch
+      id: semver
+      continue-on-error: true
+      uses: ietf-tools/semver-action@c90370b2958652d71c06a3484129a4d423a6d8a8 # v1.11.0
+      with:
+        token: ${{ github.token }}
+        branch: ${{ inputs.branch }}
+        fallbackTag: "0.0.0"
+
+    - name: Create tag
+      if: steps.semver.outcome == 'success'
+      id: create-tag
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        NEXT_VERSION: ${{ steps.semver.outputs.nextStrict }}
+        PR_NUMBER: ${{ inputs.pr_number }}
+        PRERELEASE: ${{ inputs.prerelease }}
+      run: ${{ github.action_path }}/scripts/create_tag.sh
+
+    - name: Create release
+      if: steps.semver.outcome == 'success'
+      id: create-release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: ${{ env.RELEASE_TAG }}
+        PRERELEASE: ${{ inputs.prerelease }}
+      run: ${{ github.action_path }}/scripts/create_github_release.sh
