@@ -1,0 +1,16 @@
+rules: {}
+# To exempt a specific finding, use:
+#
+#   rules:
+#     <rule-id>:
+#       ignore:
+#         - path/to/workflow.yml:line   # ignore one line
+#         - path/to/workflow.yml        # ignore entire file
+#
+# To disable a rule entirely:
+#
+#   rules:
+#     <rule-id>:
+#       disable: true
+#
+# Rule IDs: https://woodruffw.github.io/zizmor/audits/

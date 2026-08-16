@@ -1,0 +1,53 @@
+name: Actions tests & code analysis - create-release-action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run unit tests
+        run: bash tests/create_release_test.sh
+        env:
+          CTRF_REPORT_PATH: ctrf/ctrf-report.json
+
+      - name: Publish test report
+        if: always()
+        uses: ctrf-io/github-test-reporter@e500b992f936420eb633c91644cf10d4d71df700 # v1.1.0
+        with:
+          report-path: ctrf/ctrf-report.json
+          summary: true
+          pull-request: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  zizmor:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+        - name: Checkout
+          uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          with:
+            persist-credentials: false
+
+        - name: Run zizmor 🌈
+          uses: zizmorcore/zizmor-action@3dc1ecc9bcb9e94e9b2c709687979e1298497054 # v0.6.2
+          with:
+            config: .github/zizmor.yaml
